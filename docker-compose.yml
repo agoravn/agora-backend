@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  agora-db:
+    image: postgis/postgis:15-3.4
+    container_name: agora_postgis
+    restart: always
+    environment:
+      POSTGRES_USER: agora_admin
+      POSTGRES_PASSWORD: AgoraSecretPassword2026!
+      POSTGRES_DB: agora_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - agora_db_data:/var/lib/postgresql/data
+
+  agora-redis:
+    image: redis:7-alpine
+    container_name: agora_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - agora_redis_data:/data
+
+volumes:
+  agora_db_data:
+  agora_redis_data:
