@@ -129,6 +129,16 @@
                 <p><i>${data.message}</i></p>
             `;
         });
+        // THÊM ĐOẠN MỚI NÀY VÀO: Lắng nghe tin báo Hoàn thành chuyến
+        socket.on('trip_completed', (data) => {
+            const resultBox = document.getElementById('resultBox');
+            resultBox.innerHTML += `
+                <hr>
+                <h3 style="color: #c0392b; margin: 10px 0;">🏁 CHUYẾN ĐI KẾT THÚC!</h3>
+                <p><i>${data.message}</i></p>
+                <button onclick="location.reload()" style="background-color: #3498db; margin-top: 15px;">Đặt Chuyến Mới</button>
+            `;
+        });
     </script>
 </body>
 </html>

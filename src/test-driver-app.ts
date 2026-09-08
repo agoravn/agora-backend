@@ -29,6 +29,15 @@ socket.on('new_bidding_trip', (tripData) => {
       driverId: 4, // QUAN TRỌNG: Đổi số này thành ID chính xác của tài xế mà bạn đã test thành công ở bước trước
       customerId: tripData.customerId // Phản hồi lại đúng khách hàng đó
     });
+
+    // Giả lập tài xế chạy xe đến nơi và bấm "HOÀN THÀNH" sau 5 giây tiếp theo
+    setTimeout(() => {
+      console.log('🏁 BẤM NÚT TRẢ KHÁCH: HOÀN THÀNH CHUYẾN!');
+      socket.emit('complete_trip', {
+        tripId: tripData.tripId,
+        customerId: tripData.customerId
+      });
+    }, 5000);
   }, 3000);
 });
 

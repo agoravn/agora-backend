@@ -1,5 +1,5 @@
 //--------------------------------------------------
-//--mô phỏng khách đặt chuyến đi từ 227 Chính Hữu lên Sân bay
+//--Mô phỏng khách đặt chuyến đi từ 227 Chính Hữu lên Sân bay
 //--------------------------------------------------
 const testBiddingAPI = async () => {
   try {

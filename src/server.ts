@@ -1,3 +1,4 @@
+import { saveTripToDatabase, updateTripStatus } from './services/trip.service';
 import { findNearbyDrivers } from './services/driver.service';
 import { calculateDynamicFloorPrice } from './services/pricing.service';
 import express from 'express';
@@ -125,20 +126,53 @@ io.on('connection', (socket) => {
     console.log(`👤 Khách hàng [ID: ${customerId}] đang trực tuyến.`);
   });
 
+
   // --- TÀI XẾ BẤM NHẬN CUỐC ---
   socket.on('accept_trip', async (data: { tripId: string, driverId: number, customerId: string }) => {
     console.log(`✅ Tài xế [ID: ${data.driverId}] VỪA CHỐT NHẬN CUỐC ${data.tripId}`);
 
-    // 1. Xóa chuyến khỏi Redis (Khóa chuyến, chặn các tài xế khác nhận trùng)
+    // 1. Lấy giá tiền từ Redis ra trước khi xóa (để biết cước phí lưu vào DB)
+    const priceStr = await redis.get(`trip:${data.tripId}:floor_price`);
+    const finalPrice = priceStr ? parseInt(priceStr) : 0;
+
+    // 2. Xóa chuyến khỏi Redis (Khóa chuyến, chặn tài xế khác)
     await redis.del(`trip:${data.tripId}:floor_price`);
 
-    // 2. Tìm Socket của Khách hàng để báo hỷ
+    // 3. GHI LỊCH SỬ VÀO POSTGRESQL
+    try {
+      await saveTripToDatabase(data.tripId, data.customerId, data.driverId, finalPrice);
+      console.log(`💾 Đã lưu vĩnh viễn chuyến ${data.tripId} vào Database!`);
+    } catch (err) {
+      console.log('⚠️ Có lỗi khi lưu DB, nhưng vẫn tiếp tục luồng cho khách.');
+    }
+
+    // 4. Tìm Socket của Khách hàng để báo hỷ
     const customerSocket = activeCustomers.get(data.customerId);
     if (customerSocket) {
       io.to(customerSocket).emit('trip_accepted', {
         driverId: data.driverId,
         message: 'Tài xế đã nhận chuyến và đang di chuyển đến điểm đón!'
       });
+    }
+  });
+  // --- TÀI XẾ BẤM HOÀN THÀNH CHUYẾN ---
+  socket.on('complete_trip', async (data: { tripId: string, customerId: string }) => {
+    console.log(`🏁 Chuyến đi ${data.tripId} đã CẬP BẾN THÀNH CÔNG!`);
+
+    try {
+      // Cập nhật trạng thái trong Database thành COMPLETED
+      await updateTripStatus(data.tripId, 'COMPLETED');
+      console.log(`💾 Đã cập nhật trạng thái COMPLETED cho chuyến ${data.tripId}`);
+
+      // Báo hỷ cho Khách hàng biết để họ thanh toán/đánh giá
+      const customerSocket = activeCustomers.get(data.customerId);
+      if (customerSocket) {
+        io.to(customerSocket).emit('trip_completed', {
+          message: 'Chuyến đi đã hoàn thành. Cảm ơn bạn đã sử dụng Agora!'
+        });
+      }
+    } catch (err) {
+      console.log('⚠️ Lỗi khi cập nhật DB hoàn thành chuyến.');
     }
   });
 
