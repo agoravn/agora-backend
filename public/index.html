@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Agora - Khách Hàng</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 400px; background: white; min-height: 100vh; padding: 20px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; font-size: 14px; }
+        select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
+        button:hover { background-color: #2ecc71; }
+        .result-box { margin-top: 20px; padding: 15px; border-radius: 8px; background-color: #e8f8f5; border: 1px solid #a3e4d7; display: none; }
+        .error-box { margin-top: 20px; padding: 15px; border-radius: 8px; background-color: #fadbd8; border: 1px solid #f5b7b1; color: #c0392b; display: none; }
+        .spinner { display: none; text-align: center; margin-top: 10px; font-style: italic; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h2>🚕 Đặt Xe Agora</h2>
+        
+        <div class="form-group">
+            <label>Chọn dịch vụ & phương tiện:</label>
+            <select id="serviceType">
+                <optgroup label="📦 DỊCH VỤ GIAO HÀNG">
+                    <option value="DELIVERY">Giao hàng siêu tốc (Xe máy)</option>
+                </optgroup>
+                <optgroup label="🚕 DỊCH VỤ CHỞ NGƯỜI">
+                    <option value="MOTORBIKE">Agora Bike (Xe máy)</option>
+                    <option value="CAR">Agora Car (Ô tô 4 chỗ)</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Điểm đón (Mặc định: 227 Chính Hữu):</label>
+            <input type="text" value="16.0664, 108.2435" disabled style="background:#eee;">
+        </div>
+
+        <div class="form-group">
+            <label>Điểm đến (Mặc định: Sân bay Đà Nẵng):</label>
+            <input type="text" value="16.0435, 108.2014" disabled style="background:#eee;">
+        </div>
+
+        <div class="form-group">
+            <label>💰 Giá bạn đề xuất (VNĐ):</label>
+            <input type="number" id="suggestedPrice" value="40000" step="1000">
+        </div>
+
+        <button id="bookBtn" onclick="bookTrip()">Phát Tín Hiệu Tìm Tài Xế</button>
+        <div class="spinner" id="spinner">⏳ Đang quét radar tìm tài xế...</div>
+
+        <div class="result-box" id="resultBox"></div>
+        <div class="error-box" id="errorBox"></div>
+    </div>
+    <script>
+        async function bookTrip() {
+            const btn = document.getElementById('bookBtn');
+            const spinner = document.getElementById('spinner');
+            const resultBox = document.getElementById('resultBox');
+            const errorBox = document.getElementById('errorBox');
+            const suggestedPrice = parseInt(document.getElementById('suggestedPrice').value);
+            const serviceType = document.getElementById('serviceType').value;
+
+            // Reset UI
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            resultBox.style.display = 'none';
+            errorBox.style.display = 'none';
+
+            try {
+                // Gọi API vào Backend của bạn
+                const response = await fetch('/api/trips/bidding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerId: "CUST_WEB_001",
+                        suggestedPrice: suggestedPrice,
+                        serviceType: serviceType,
+                        pickupLocation: { lat: 16.0664, lng: 108.2435 },
+                        dropoffLocation: { lat: 16.0435, lng: 108.2014 }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultBox.style.display = 'block';
+                    resultBox.innerHTML = `
+                        <strong>🎉 Đã phát tín hiệu!</strong><br>
+                        📏 Quãng đường: ${data.distanceKm} km<br>
+                        💵 Giá sàn hệ thống: ${data.floorPrice}đ<br>
+                        🚕 Tìm thấy <b>${data.driversFound}</b> tài xế gần bạn.
+                    `;
+                } else {
+                    errorBox.style.display = 'block';
+                    errorBox.innerText = '❌ ' + data.message;
+                }
+            } catch (error) {
+                errorBox.style.display = 'block';
+                errorBox.innerText = '❌ Lỗi kết nối đến máy chủ!';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+    </script>
+    <!-- Nhúng thư viện Socket.io cho Frontend -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Khởi tạo Socket.io trên Web
+        const socket = io();
+        const MY_CUSTOMER_ID = "CUST_WEB_001";
+        
+        // Báo danh với Server
+        socket.emit('register_customer', MY_CUSTOMER_ID);
+
+        // Lắng nghe tin báo Tài xế đã nhận cuốc
+        socket.on('trip_accepted', (data) => {
+            const resultBox = document.getElementById('resultBox');
+            // Cập nhật giao diện xanh lá cây rực rỡ
+            resultBox.innerHTML += `
+                <hr>
+                <h3 style="color: #27ae60; margin: 10px 0;">✅ TÀI XẾ ĐÃ NHẬN CHUYẾN!</h3>
+                <p><b>Tài xế ID:</b> ${data.driverId}</p>
+                <p><i>${data.message}</i></p>
+            `;
+        });
+    </script>
+</body>
+</html>
