@@ -1,144 +1,88 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <link rel="stylesheet" href="style.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agora - Khách Hàng</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 0; display: flex; justify-content: center; }
-        .app-container { width: 100%; max-width: 400px; background: white; min-height: 100vh; padding: 20px; box-sizing: border-box; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; font-size: 14px; }
-        select, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 15px; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
-        button:hover { background-color: #2ecc71; }
-        .result-box { margin-top: 20px; padding: 15px; border-radius: 8px; background-color: #e8f8f5; border: 1px solid #a3e4d7; display: none; }
-        .error-box { margin-top: 20px; padding: 15px; border-radius: 8px; background-color: #fadbd8; border: 1px solid #f5b7b1; color: #c0392b; display: none; }
-        .spinner { display: none; text-align: center; margin-top: 10px; font-style: italic; color: #7f8c8d; }
-    </style>
+    <title>Agora - Đặt xe</title>
+    
+    <!-- Nhúng thư viện Bản đồ Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+       
 </head>
 <body>
-    <div class="app-container">
-        <h2>🚕 Đặt Xe Agora</h2>
+    <div class="app-layout">
         
-        <div class="form-group">
-            <label>Chọn dịch vụ & phương tiện:</label>
-            <select id="serviceType">
-                <optgroup label="📦 DỊCH VỤ GIAO HÀNG">
-                    <option value="DELIVERY">Giao hàng siêu tốc (Xe máy)</option>
-                </optgroup>
-                <optgroup label="🚕 DỊCH VỤ CHỞ NGƯỜI">
-                    <option value="MOTORBIKE">Agora Bike (Xe máy)</option>
-                    <option value="CAR">Agora Car (Ô tô 4 chỗ)</option>
-                </optgroup>
-            </select>
+        <!-- Header chung (Nút 3 gạch & Logo Agora) -->
+        <div class="app-header">
+            <div class="menu-icon" onclick="alert('Mở menu')">☰</div>
+            <div class="header-agora">AGORA</div>
         </div>
 
-        <div class="form-group">
-            <label>Điểm đón (Mặc định: 227 Chính Hữu):</label>
-            <input type="text" value="16.0664, 108.2435" disabled style="background:#eee;">
+        <!-- Khung Bản đồ (Desktop: bên phải | Mobile: nằm ngay dưới Header trong card bo góc) -->
+        <div class="map-container">
+            <div id="map"></div>
         </div>
 
-        <div class="form-group">
-            <label>Điểm đến (Mặc định: Sân bay Đà Nẵng):</label>
-            <input type="text" value="16.0435, 108.2014" disabled style="background:#eee;">
+        <!-- Khung Form Nhập liệu -->
+        <div class="booking-form">
+            <!-- 1. Dịch vụ (Đổi mặc định sang Chở người) -->
+            <div class="service-tabs">
+                <div class="service-tab active-blue" id="tab-ride" onclick="selectService('RIDE')">👤 Chở người</div>
+                <div class="service-tab" id="tab-delivery" onclick="selectService('DELIVERY')">📦 Gửi Hàng</div>
+            </div>
+
+            <!-- 2. Địa chỉ -->
+            <div class="address-box">
+                <div class="dotted-line"></div>
+                <div class="addr-row">
+                    <div class="dot dot-blue"></div>
+                    <input type="text" id="pickupInput" class="addr-input" placeholder="Nhập điểm đón..." onkeypress="if(event.key === 'Enter') searchAddress(this.value, 'pickup')">
+                    <button class="btn-search blue" onclick="searchAddress(document.getElementById('pickupInput').value, 'pickup')">🔍</button>
+                </div>
+                <div class="addr-row">
+                    <div class="dot dot-red"></div>
+                    <input type="text" id="dropoffInput" class="addr-input" placeholder="Nhập điểm đến..." onkeypress="if(event.key === 'Enter') searchAddress(this.value, 'dropoff')">
+                    <button class="btn-search red" onclick="searchAddress(document.getElementById('dropoffInput').value, 'dropoff')">🔍</button>
+                </div>
+            </div>
+
+            <!-- 3. Phương tiện -->
+            <div class="vehicle-tabs">
+                <div class="v-tab active-orange" id="veh-motor" onclick="selectVehicle('MOTORBIKE')">Xe máy</div>
+                <div class="v-tab" id="veh-car" onclick="selectVehicle('CAR')">Ô tô</div>
+                <div class="v-tab" id="veh-truck" onclick="selectVehicle('TRUCK')">Xe tải</div>
+            </div>
+
+            <!-- 4. Chế độ -->
+            <div class="mode-tabs">
+                <div class="m-tab active-dark" id="mode-bid" onclick="selectMode('BID')">⚖️ Đấu giá tự do</div>
+                <div class="m-tab" id="mode-instant" onclick="selectMode('INSTANT')">⚡ Đi ngay</div>
+            </div>
+
+            <!-- 5. Khung Đấu giá -->
+            <div class="bidding-section" id="biddingBox">
+                <div class="bid-note">Sàn bảo vệ tài xế: 30.000 đ</div>
+                <div class="bid-controls">
+                    <button class="btn-bid" onclick="adjustPrice(-5000)">-5k</button>
+                    <div class="bid-price" id="displayPrice">45.000 đ</div>
+                    <button class="btn-bid" onclick="adjustPrice(5000)">+5k</button>
+                </div>
+            </div>
+
+            <div id="resultBox"></div>
+
+            <!-- Nút Đặt Xe (Thay đổi id để dễ điều khiển chữ) -->
+            <button class="btn-main-action" id="mainActionBtn" onclick="bookRide()">TÌM TÀI XẾ</button>
         </div>
 
-        <div class="form-group">
-            <label>💰 Giá bạn đề xuất (VNĐ):</label>
-            <input type="number" id="suggestedPrice" value="40000" step="1000">
-        </div>
-
-        <button id="bookBtn" onclick="bookTrip()">Phát Tín Hiệu Tìm Tài Xế</button>
-        <div class="spinner" id="spinner">⏳ Đang quét radar tìm tài xế...</div>
-
-        <div class="result-box" id="resultBox"></div>
-        <div class="error-box" id="errorBox"></div>
     </div>
-    <script>
-        async function bookTrip() {
-            const btn = document.getElementById('bookBtn');
-            const spinner = document.getElementById('spinner');
-            const resultBox = document.getElementById('resultBox');
-            const errorBox = document.getElementById('errorBox');
-            const suggestedPrice = parseInt(document.getElementById('suggestedPrice').value);
-            const serviceType = document.getElementById('serviceType').value;
+    
 
-            // Reset UI
-            btn.disabled = true;
-            spinner.style.display = 'block';
-            resultBox.style.display = 'none';
-            errorBox.style.display = 'none';
-
-            try {
-                // Gọi API vào Backend của bạn
-                const response = await fetch('/api/trips/bidding', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        customerId: "CUST_WEB_001",
-                        suggestedPrice: suggestedPrice,
-                        serviceType: serviceType,
-                        pickupLocation: { lat: 16.0664, lng: 108.2435 },
-                        dropoffLocation: { lat: 16.0435, lng: 108.2014 }
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    resultBox.style.display = 'block';
-                    resultBox.innerHTML = `
-                        <strong>🎉 Đã phát tín hiệu!</strong><br>
-                        📏 Quãng đường: ${data.distanceKm} km<br>
-                        💵 Giá sàn hệ thống: ${data.floorPrice}đ<br>
-                        🚕 Tìm thấy <b>${data.driversFound}</b> tài xế gần bạn.
-                    `;
-                } else {
-                    errorBox.style.display = 'block';
-                    errorBox.innerText = '❌ ' + data.message;
-                }
-            } catch (error) {
-                errorBox.style.display = 'block';
-                errorBox.innerText = '❌ Lỗi kết nối đến máy chủ!';
-            } finally {
-                btn.disabled = false;
-                spinner.style.display = 'none';
-            }
-        }
-    </script>
-    <!-- Nhúng thư viện Socket.io cho Frontend -->
+    <!-- Script Bản đồ & Socket -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script>
-        // Khởi tạo Socket.io trên Web
-        const socket = io();
-        const MY_CUSTOMER_ID = "CUST_WEB_001";
-        
-        // Báo danh với Server
-        socket.emit('register_customer', MY_CUSTOMER_ID);
-
-        // Lắng nghe tin báo Tài xế đã nhận cuốc
-        socket.on('trip_accepted', (data) => {
-            const resultBox = document.getElementById('resultBox');
-            // Cập nhật giao diện xanh lá cây rực rỡ
-            resultBox.innerHTML += `
-                <hr>
-                <h3 style="color: #27ae60; margin: 10px 0;">✅ TÀI XẾ ĐÃ NHẬN CHUYẾN!</h3>
-                <p><b>Tài xế ID:</b> ${data.driverId}</p>
-                <p><i>${data.message}</i></p>
-            `;
-        });
-        // THÊM ĐOẠN MỚI NÀY VÀO: Lắng nghe tin báo Hoàn thành chuyến
-        socket.on('trip_completed', (data) => {
-            const resultBox = document.getElementById('resultBox');
-            resultBox.innerHTML += `
-                <hr>
-                <h3 style="color: #c0392b; margin: 10px 0;">🏁 CHUYẾN ĐI KẾT THÚC!</h3>
-                <p><i>${data.message}</i></p>
-                <button onclick="location.reload()" style="background-color: #3498db; margin-top: 15px;">Đặt Chuyến Mới</button>
-            `;
-        });
-    </script>
+    <!-- Nhúng file script  -->
+    <script src="script.js"></script>
 </body>
 </html>

@@ -1,0 +1,143 @@
+<!--CSS toàn bộ giao diện khách hàng-->
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f8f9fa; }
+
+        /* --- MÀN HÌNH MÁY TÍNH (DESKTOP): BỐ CỤC 2 CỘT --- */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas:
+                "header map"
+                "form map";
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        .app-header {
+            grid-area: header;
+            background: #ffffff;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            z-index: 10;
+        }
+
+        .map-container {
+            grid-area: map;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .booking-form {
+            grid-area: form;
+            background: #ffffff;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-icon {
+            position: absolute;
+            left: 20px;
+            font-size: 22px;
+            cursor: pointer;
+            color: #2d3436;
+            font-weight: bold;
+        }
+
+        .header-agora {
+            color: #0984e3;
+            font-size: 27px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* --- MÀN HÌNH ĐIỆN THOẠI (MOBILE): XẾP DỌC THEO Ý MUỐN --- */
+        @media (max-width: 768px) {
+            body { overflow-y: auto; background: #ffffff; }
+            .app-layout {
+                display: flex;
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                padding: 12px;
+                background: #ffffff;
+            }
+            .app-header {
+                background: transparent;
+                box-shadow: none;
+                padding: 5px 0;
+                margin-bottom: 5px;
+            }
+            .menu-icon { left: 0; }
+            
+            /* ĐỔI CHIỀU CAO THÀNH 350PX HOẶC 400PX ĐỂ TẠO KHUNG VUÔNG TO RỘNG GIỐNG GRAB */
+            .map-container {
+                width: 100%;
+                height: 300px; /* Tăng chiều cao để bản đồ to thành hình vuông mở rộng */
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                margin-bottom: 15px;
+                background: white;
+                border: 1px solid #f1f2f6;
+                flex: none;
+            }
+            .booking-form {
+                background: white;
+                border-radius: 20px;
+                padding: 5px 0;
+                box-shadow: none;
+            }
+        }
+
+        /* --- CSS CHI TIẾT CÁC THÀNH PHẦN (Giữ nguyên chuẩn SVG) --- */
+        .service-tabs { display: flex; background: #f1f2f6; border-radius: 25px; padding: 5px; margin-bottom: 20px; }
+        .service-tab { flex: 1; text-align: center; padding: 12px; border-radius: 20px; font-weight: 600; font-size: 14px; color: #636e72; cursor: pointer; transition: 0.3s; }
+        .service-tab.active-orange { background: #e17055; color: white; box-shadow: 0 2px 5px rgba(225, 112, 85, 0.3); }
+
+        .address-box { position: relative; margin-bottom: 25px; background: white; }
+        .addr-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 15px; z-index: 2; }
+        .dot-blue { background: #0984e3; box-shadow: 0 0 0 3px white, 0 0 0 4px #0984e3; }
+        .dot-red { background: #d63031; box-shadow: 0 0 0 3px white, 0 0 0 4px #d63031; }
+        .addr-input { flex: 1; border: none; font-size: 15px; font-weight: 600; color: #2d3436; outline: none; padding: 5px 0; }
+        .btn-search { width: 35px; height: 35px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn-search.blue { background: #e8f4fd; color: #0984e3; }
+        .btn-search.red { background: #fdecec; color: #d63031; }
+        .dotted-line { position: absolute; left: 4px; top: 20px; bottom: 30px; border-left: 2px dashed #dfe6e9; z-index: 1; }
+
+        .vehicle-tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .v-tab { flex: 1; padding: 10px; text-align: center; border-radius: 12px; border: 1.5px solid #dfe6e9; font-weight: 600; font-size: 13px; color: #636e72; cursor: pointer; transition: 0.2s; }
+        .v-tab.active-orange { background: #e17055; color: white; border-color: #e17055; }
+
+        .mode-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .m-tab { flex: 1; padding: 12px; text-align: center; border-radius: 12px; font-weight: 600; font-size: 13px; color: #636e72; background: white; border: 1.5px solid #dfe6e9; cursor: pointer; }
+        .m-tab.active-dark { background: #2d3436; color: white; border-color: #2d3436; }
+
+        .bidding-section { text-align: center; margin-bottom: 20px; }
+        .bid-note { font-size: 12px; color: #636e72; margin-bottom: 10px; }
+        .bid-controls { display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .btn-bid { width: 60px; height: 45px; border-radius: 25px; border: none; background: #f1f2f6; font-weight: bold; font-size: 15px; color: #636e72; cursor: pointer; }
+        .bid-price { flex: 1; max-width: 170px; height: 60px; border-radius: 15px; background: #2d3436; color: white; font-size: 22px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+
+        .btn-main-action { width: 100%; padding: 18px; border-radius: 30px; border: none; background: #0984e3; color: white; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: auto; box-shadow: 0 4px 15px rgba(225, 112, 85, 0.3); }
+        #resultBox { margin-bottom: 15px; text-align: center; font-size: 14px; }
+        /* Màu xanh đặc trưng cho dịch vụ Chở người */
+        .service-tab.active-blue {
+            background: #0984e3; 
+            color: white; 
+            box-shadow: 0 2px 5px rgba(9, 132, 227, 0.3);
+        }

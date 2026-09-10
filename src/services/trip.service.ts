@@ -38,3 +38,26 @@ export async function updateTripStatus(tripId: string, status: string) {
     throw error;
   }
 }
+// Hàm Thống kê số cuốc và Doanh thu trong ngày hôm nay
+export async function getDailyStats() {
+  const query = `
+    SELECT 
+      COUNT(id) as total_trips,
+      COALESCE(SUM(price), 0) as total_revenue
+    FROM trips
+    WHERE status = 'COMPLETED' 
+      AND DATE(created_at) = CURRENT_DATE;
+  `;
+  
+  try {
+    const result = await pool.query(query);
+    return {
+      totalTrips: parseInt(result.rows[0].total_trips),
+      // Format tiền tệ cho đẹp mắt
+      totalRevenue: parseInt(result.rows[0].total_revenue)
+    };
+  } catch (error) {
+    console.error('❌ Lỗi khi lấy thống kê:', error);
+    throw error;
+  }
+}

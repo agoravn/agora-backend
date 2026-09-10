@@ -1,4 +1,4 @@
-import { saveTripToDatabase, updateTripStatus } from './services/trip.service';
+import { saveTripToDatabase, updateTripStatus, getDailyStats } from './services/trip.service';
 import { findNearbyDrivers } from './services/driver.service';
 import { calculateDynamicFloorPrice } from './services/pricing.service';
 import express from 'express';
@@ -45,6 +45,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// --- API: THỐNG KÊ DOANH THU TRONG NGÀY ---
+app.get('/api/admin/daily-stats', async (req, res) => {
+  try {
+    const stats = await getDailyStats();
+    res.json({
+      success: true,
+      message: 'Báo cáo doanh thu hôm nay',
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi truy xuất cơ sở dữ liệu' });
+  }
+});
 // ==========================================
 // API KHỞI TẠO CHUYẾN ĐI & BẮN CUỐC (SOCKET)
 // ==========================================
@@ -114,6 +127,32 @@ const activeCustomers = new Map<string, string>();
 
 // 4. LUỒNG WEBSOCKET LẮNG NGHE TÀI XẾ & KHÁCH HÀNG
 io.on('connection', (socket) => {
+  
+  // Lắng nghe Khách hàng đặt xe
+  socket.on('request_ride', async (rideData) => {
+    console.log("🚨 NHẬN YÊU CẦU ĐẶT XE TỪ KHÁCH:", rideData); // In ra để kiểm tra
+
+    try {
+      // TẠM THỜI BỎ QUA TÌM KIẾM BÁN KÍNH DB ĐỂ TEST LUỒNG MẠNG TRƯỚC
+      // Ép hệ thống tạo luôn một chuyến đi giả lập bắn thẳng qua Tài xế
+      const mockTrip = {
+        tripId: 'TRIP_' + Date.now(),
+        customerId: rideData.customerId,
+        pickup: rideData.pickup,
+        dropoff: rideData.dropoff,
+        suggestedPrice: rideData.price  //Lấy giá thật từ Frontend - Màn khách hàng
+      };
+
+      console.log("🚀 ĐANG BẮN CUỐC SANG CHO TÀI XẾ...");
+      
+      // Bắn tín hiệu sang toàn bộ Tài xế đang online (kích hoạt hàm bên driver.html)
+      io.emit('new_bidding_trip', mockTrip);
+
+    } catch (error) {
+      console.error("❌ Lỗi khi xử lý đặt xe:", error);
+    }
+  });
+  
   // --- TÀI XẾ BÁO DANH ---
   socket.on('register_driver', (driverId: number) => {
     activeDrivers.set(driverId, socket.id);
@@ -146,19 +185,42 @@ io.on('connection', (socket) => {
       console.log('⚠️ Có lỗi khi lưu DB, nhưng vẫn tiếp tục luồng cho khách.');
     }
 
-    // 4. Tìm Socket của Khách hàng để báo hỷ
-    const customerSocket = activeCustomers.get(data.customerId);
-    if (customerSocket) {
-      io.to(customerSocket).emit('trip_accepted', {
-        driverId: data.driverId,
-        message: 'Tài xế đã nhận chuyến và đang di chuyển đến điểm đón!'
-      });
+    // 4. KÉO HỒ SƠ TÀI XẾ TỪ DATABASE VÀ BÁO CHO KHÁCH HÀNG
+    try {
+      const driverResult = await pool.query(
+        'SELECT full_name, phone_number, license_plate, vehicle_type FROM drivers WHERE id = $1',
+        [data.driverId]
+      );
+
+      if (driverResult.rows.length > 0) {
+        const driverInfo = driverResult.rows[0];
+
+        // Tìm Socket của Khách hàng để báo tin vui kèm thông tin tài xế
+        const customerSocket = activeCustomers.get(data.customerId);
+        if (customerSocket) {
+          io.to(customerSocket).emit('trip_accepted', {
+            tripId: data.tripId,
+            driverId: data.driverId,
+            driverName: driverInfo.full_name,
+            driverPhone: driverInfo.phone_number,
+            vehicleType: driverInfo.vehicle_type,
+            licensePlate: driverInfo.license_plate,
+            message: 'Tài xế đã nhận chuyến và đang di chuyển đến điểm đón!'
+          });
+        }
+      } else {
+        console.log(`⚠️ Không tìm thấy hồ sơ tài xế ID: ${data.driverId}`);
+      }
+    } catch (dbError) {
+      console.error("❌ Lỗi khi truy vấn hồ sơ tài xế:", dbError);
     }
   });
   // --- TÀI XẾ BẤM HOÀN THÀNH CHUYẾN ---
   socket.on('complete_trip', async (data: { tripId: string, customerId: string }) => {
     console.log(`🏁 Chuyến đi ${data.tripId} đã CẬP BẾN THÀNH CÔNG!`);
-
+    // THÊM DÒNG NÀY: Báo cho Khách hàng biết để reset lại bản đồ
+    io.emit('trip_completed', data);
+    
     try {
       // Cập nhật trạng thái trong Database thành COMPLETED
       await updateTripStatus(data.tripId, 'COMPLETED');
@@ -166,6 +228,7 @@ io.on('connection', (socket) => {
 
       // Báo hỷ cho Khách hàng biết để họ thanh toán/đánh giá
       const customerSocket = activeCustomers.get(data.customerId);
+      console.log(`🔍 Tìm Socket ID của khách ${data.customerId}:`, customerSocket);
       if (customerSocket) {
         io.to(customerSocket).emit('trip_completed', {
           message: 'Chuyến đi đã hoàn thành. Cảm ơn bạn đã sử dụng Agora!'
@@ -187,7 +250,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
+const PORT = 3000;
+httpServer.listen(PORT,() => {
   console.log(`🚀 Nhạc trưởng Agora đang chạy tại port ${PORT}`);
 });
