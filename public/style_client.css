@@ -1,7 +1,13 @@
 <!--CSS toàn bộ giao diện khách hàng-->
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f8f9fa; }
-
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, 
+            BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+            background: #f8f9fa; 
+            overflow-x: hidden;
+        }
         /* --- MÀN HÌNH MÁY TÍNH (DESKTOP): BỐ CỤC 2 CỘT --- */
         .app-layout {
             display: grid;
@@ -11,10 +17,9 @@
                 "header map"
                 "form map";
             height: 100vh;
-            width: 100vw;
+            width: 100%;
             overflow: hidden;
         }
-
         .app-header {
             grid-area: header;
             background: #ffffff;
@@ -113,7 +118,7 @@
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 15px; z-index: 2; }
         .dot-blue { background: #0984e3; box-shadow: 0 0 0 3px white, 0 0 0 4px #0984e3; }
         .dot-red { background: #d63031; box-shadow: 0 0 0 3px white, 0 0 0 4px #d63031; }
-        .addr-input { flex: 1; border: none; font-size: 15px; font-weight: 600; color: #2d3436; outline: none; padding: 5px 0; }
+        .addr-input { flex: 1; min-width: 0;width: 100%; border: none; font-size: 15px; font-weight: 600; color: #2d3436; outline: none; padding: 5px 0; }
         .btn-search { width: 35px; height: 35px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
         .btn-search.blue { background: #e8f4fd; color: #0984e3; }
         .btn-search.red { background: #fdecec; color: #d63031; }
@@ -140,4 +145,48 @@
             background: #0984e3; 
             color: white; 
             box-shadow: 0 2px 5px rgba(9, 132, 227, 0.3);
+        }
+
+        /* --- GIAO DIỆN HỘP GỢI Ý ĐỊA CHỈ TRÊN BẢN ĐỒ  --- */
+        .suggestions-list {
+            position: absolute;
+            top: 100%; /* Nằm ngay dưới ô input */
+            left: 30px;
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none; /* Mặc định ẩn */
+            border: 1px solid #dfe6e9;
+            margin-top: 5px;
+        }
+        
+        .suggestion-item {
+            padding: 12px 15px;
+            font-size: 13px;
+            color: #2d3436;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f2f6;
+            display: flex;
+            align-items: center;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: #f8f9fa;
+            color: #0984e3;
+            font-weight: 600;
+        }
+        <!--thêm nút Định vị-->
+        .addr-row { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            gap: 5px; /* Thêm gap để các nút không bị dính sát vào nhau */
         }

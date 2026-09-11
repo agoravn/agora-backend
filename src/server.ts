@@ -165,11 +165,38 @@ io.on('connection', (socket) => {
     console.log(`👤 Khách hàng [ID: ${customerId}] đang trực tuyến.`);
   });
 
+  // --- KHÁCH HÀNG BẤM TÌM TÀI XẾ (HÀM BỊ THIẾU) ---
+  socket.on('book_ride', (data: any) => {
+    console.log(`🛎️ Khách [ID: ${socket.id}] đang tìm xe với giá ${data.price}đ`);
+    
+    // Đóng gói thông tin cuốc xe
+    const tripData = {
+      tripId: 'TRIP_' + Math.floor(Math.random() * 1000000),
+      customerId: socket.id, // Lưu lại ID khách để lát tài xế biết trả lời ai
+      suggestedPrice: data.price,
+      pickup: data.pickup,
+      dropoff: data.dropoff
+    };
+
+    // Quét toàn bộ tài xế đang Online (quét thanh khoản) và đẩy cuốc xe tới
+    activeDrivers.forEach((driverSocketId, driverId) => {
+      io.to(driverSocketId).emit('new_bidding_trip', tripData);
+    });
+  });
+
+  // --- TÀI XẾ TRẢ GIÁ MỚI (+5k, +10k) ---
+  socket.on('counter_offer', (data: any) => {
+    console.log(`⚖️ Tài xế [ID: ${data.driverId}] báo giá mới ${data.newPrice}đ cho cuốc ${data.tripId}`);
+    // Bắn mức giá mới ngược lại cho đúng vị khách đó
+    io.to(data.customerId).emit('driver_counter_offer', data);
+  });
 
   // --- TÀI XẾ BẤM NHẬN CUỐC ---
   socket.on('accept_trip', async (data: { tripId: string, driverId: number, customerId: string }) => {
     console.log(`✅ Tài xế [ID: ${data.driverId}] VỪA CHỐT NHẬN CUỐC ${data.tripId}`);
-
+    // Bắn thông báo chốt đơn về cho màn hình khách hàng
+    io.to(data.customerId).emit('driver_accepted', data);
+    
     // 1. Lấy giá tiền từ Redis ra trước khi xóa (để biết cước phí lưu vào DB)
     const priceStr = await redis.get(`trip:${data.tripId}:floor_price`);
     const finalPrice = priceStr ? parseInt(priceStr) : 0;
@@ -216,26 +243,12 @@ io.on('connection', (socket) => {
     }
   });
   // --- TÀI XẾ BẤM HOÀN THÀNH CHUYẾN ---
-  socket.on('complete_trip', async (data: { tripId: string, customerId: string }) => {
-    console.log(`🏁 Chuyến đi ${data.tripId} đã CẬP BẾN THÀNH CÔNG!`);
-    // THÊM DÒNG NÀY: Báo cho Khách hàng biết để reset lại bản đồ
-    io.emit('trip_completed', data);
+  socket.on('complete_trip', (data: any) => {
+    console.log(`🏁 Tài xế [ID: ${data.driverId}] đã hoàn tất cuốc ${data.tripId}`);
     
-    try {
-      // Cập nhật trạng thái trong Database thành COMPLETED
-      await updateTripStatus(data.tripId, 'COMPLETED');
-      console.log(`💾 Đã cập nhật trạng thái COMPLETED cho chuyến ${data.tripId}`);
-
-      // Báo hỷ cho Khách hàng biết để họ thanh toán/đánh giá
-      const customerSocket = activeCustomers.get(data.customerId);
-      console.log(`🔍 Tìm Socket ID của khách ${data.customerId}:`, customerSocket);
-      if (customerSocket) {
-        io.to(customerSocket).emit('trip_completed', {
-          message: 'Chuyến đi đã hoàn thành. Cảm ơn bạn đã sử dụng Agora!'
-        });
-      }
-    } catch (err) {
-      console.log('⚠️ Lỗi khi cập nhật DB hoàn thành chuyến.');
+    // Bắn thông báo về cho điện thoại của Khách hàng
+    if (data.customerId) {
+        io.to(data.customerId).emit('trip_completed', data);
     }
   });
 

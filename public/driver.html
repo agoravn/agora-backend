@@ -1,183 +1,99 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+    <link rel="stylesheet" href="style_driver.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agora Driver App</title>
-    <style>
-        /* Thiết lập nền tối để làm nổi bật khung điện thoại */
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 0; background-color: #dcdde1; display: flex; justify-content: center; min-height: 100vh; }
-
-        /* BÓP KHUNG HÌNH (Giao diện Mobile) */
-        .app-container {
-            width: 100%;
-            max-width: 420px; /* Chiều rộng tối đa của điện thoại */
-            background-color: #f4f7f6;
-            min-height: 100vh;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* Thanh Header */
-        .header { background: #2c3e50; color: white; padding: 15px 20px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .header h2 { margin: 0; font-size: 20px; letter-spacing: 1px; }
-
-        .content { padding: 15px; flex: 1; }
-
-        /* Thẻ Card hiện đại */
-        .card { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 15px; }
-
-        /* Giao diện Thông tin & Nút gạt Online/Offline */
-        .profile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .profile-info { line-height: 1.4; }
-        .profile-info b { color: #2c3e50; font-size: 16px; }
-        .profile-info span { color: #7f8c8d; font-size: 13px; }
-
-        /* Thiết kế nút gạt (Toggle Switch) */
-        .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #27ae60; }
-        input:checked + .slider:before { transform: translateX(22px); }
-
-        .status-text { text-align: center; font-weight: bold; font-size: 15px; color: #27ae60; margin: 10px 0 0 0; transition: color 0.3s;}
-        .status-text.offline { color: #95a5a6; }
-
-        /* Thẻ Cuốc xe mới */
-        .trip-alert { display: none; border-left: 5px solid #f39c12; }
-        .trip-alert-header { color: #f39c12; margin: 0 0 10px 0; font-size: 16px; text-align: center; font-weight: bold;}
-        .trip-detail { margin: 8px 0; font-size: 14px; color: #34495e; }
-        .trip-price { font-size: 24px; color: #e74c3c; font-weight: bold; margin: 15px 0; text-align: center;}
-
-        /* Nút bấm tinh gọn */
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
-        .btn:active { transform: scale(0.98); }
-        .btn-accept { background-color: #27ae60; color: white; box-shadow: 0 4px 6px rgba(39, 174, 96, 0.25); }
-        .btn-complete { background-color: #2980b9; color: white; display: none; box-shadow: 0 4px 6px rgba(41, 128, 185, 0.25); }
-    </style>
+    <title>Agora - Tài xế</title>
 </head>
 <body>
     <div class="app-container">
-        <div class="header">
-            <h2>🚕 Agora Driver</h2>
+        <!-- Header & Ví -->
+        <div class="status-bar"><span>09:41</span><span>100%</span></div>
+        <div class="header-row">
+            <div class="badge-online" id="statusToggleBtn" onclick="toggleStatus()">ONLINE</div>
+            <div class="wallet-balance">Ví: 520.000 đ</div>
         </div>
-        
-        <div class="content">
-            <!-- Thẻ Trạng thái Tài xế -->
-            <div class="card">
-                <div class="profile-header">
-                    <div class="profile-info">
-                        <b>Tài xế Nguyễn Văn Gần</b><br>
-                        <span>ID: 4 | Xe: 43H1-111.11</span>
-                    </div>
-                    <!-- Nút Gạt Trực tuyến -->
-                    <label class="switch">
-                        <input type="checkbox" id="statusToggle" checked onchange="toggleStatus()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <p id="statusText" class="status-text">🟢 Đang trực tuyến</p>
-            </div>
 
-            <!-- Thẻ Cuốc xe gọi đến -->
-            <div id="incomingTrip" class="card trip-alert">
-                <p id="tripStatusText" class="trip-alert-header">🚨 CÓ CUỐC XE MỚI!</p>
-                <hr style="border: 0; border-top: 1px dashed #ccc; margin: 10px 0;">
-                
-                <div class="trip-detail">📍 <b>Điểm đón:</b> Cách bạn ~200m</div>
-                <div class="trip-detail">🏷️ <b>Mã chuyến:</b> <span id="tripIdDisplay"></span></div>
-                
-                <div class="trip-price" id="priceDisplay"></div>
-                
-                <button id="btnAccept" class="btn btn-accept" onclick="acceptTrip()">🚀 Nhận Cuốc Ngay</button>
-                <button id="btnComplete" class="btn btn-complete" onclick="completeTrip()">🏁 Trả Khách</button>
+        <!-- KHUNG CUỐC XE MỚI -->
+        <div id="tripContainer" style="display: none;">
+            <div class="blue-banner" id="topBanner">⚡ CUỐC MỚI • CÒN <span id="countdown">15</span> GIÂY</div>
+            
+            <!-- Phần nội dung chính (Chứa form giá và địa chỉ) -->
+            <div class="main-card" id="cardContent">
+                <div class="price-section">
+                    <div class="price-title">GIÁ KHÁCH ĐỀ XUẤT</div>
+                    <div class="price-value" id="priceDisplay">...</div>
+                    <div class="payment-method">TIỀN MẶT</div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="addr-row">
+                    <div class="addr-icon"><div class="dot dot-blue"></div></div>
+                    <div class="dotted-line"></div>
+                    <div class="addr-info">
+                        <div class="addr-sub">ĐIỂM ĐÓN (Cách bạn 400m - 2 phút)</div>
+                        <div class="addr-main" id="pickupDisplay">...</div>
+                    </div>
+                </div>
+
+                <div class="addr-row">
+                    <div class="addr-icon"><div class="dot dot-red"></div></div>
+                    <div class="addr-info">
+                        <div class="addr-sub">ĐIỂM ĐẾN (Lộ trình dự kiến)</div>
+                        <div class="addr-main" id="dropoffDisplay">...</div>
+                    </div>
+                </div>
+
+                <div class="note-box" id="noteDisplay">Khách có 1 vali kéo cỡ vừa</div>
+
+                <!-- CỤM NÚT ĐIỀU KHIỂN (ĐÃ FIX DUY NHẤT 1 BỘ) -->
+                <div id="actionButtons">
+                    <button id="btnAccept" class="btn-accept" onclick="acceptTrip()">NHẬN NGAY (<span id="btnPriceDisplay">...</span>)</button>
+
+                    <div id="counterSection" class="counter-section">
+                        <div class="counter-title">HOẶC BÁN GIÁ CAO HƠN CHO KHÁCH:</div>
+                        <div class="counter-grid">
+                            <button class="btn-counter" onclick="counterOffer(5000)">
+                                <div class="btn-counter-val">+5.000 đ</div>
+                                <div class="btn-counter-total" id="calc5k">...</div>
+                            </button>
+                            <button class="btn-counter" onclick="counterOffer(10000)">
+                                <div class="btn-counter-val">+10.000 đ</div>
+                                <div class="btn-counter-total" id="calc10k">...</div>
+                            </button>
+                            <button class="btn-counter" onclick="counterOffer(15000)">
+                                <div class="btn-counter-val">+15.000 đ</div>
+                                <div class="btn-counter-total" id="calc15k">...</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button id="btnReject" class="btn-reject" onclick="ignoreTrip()">BỎ QUA (Không phạt tỉ lệ)</button>
+                </div>
+
+                <!-- Màn hình chờ khách xác nhận giá (Mặc định ẩn) -->
+                <div id="waitingCustomerBox" style="display: none; text-align: center; padding: 20px 0;">
+                    <div style="font-size:30px; margin-bottom:10px;">⏳</div>
+                    <h3 id="waitingPriceText" style="color:#2d3436; margin: 0 0 10px 0;">...</h3>
+                    <p style="color:#7f8c8d; font-size:14px; margin: 0;">Đang chờ khách xác nhận...</p>
+                </div>
+
+                <!-- Nút hoàn thành cuốc xe (Mặc định ẩn) -->
+                <button id="btnFinish" class="btn-accept" style="display: none; background: #2980b9;" onclick="finishTrip()">🏁 TRẢ KHÁCH (HOÀN THÀNH)</button>
             </div>
+        </div>
+
+        <!-- Màn hình chờ dỗi việc -->
+        <div id="idleScreen" style="text-align: center; margin-top: 50px; color: #bdc3c7;">
+            <div style="font-size: 50px; margin-bottom: 20px;">☕</div>
+            <h3>Đang tìm cuốc xe...</h3>
         </div>
     </div>
 
-    <!-- Nhúng Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const DRIVER_ID = 4;
-        let currentTrip = {};
-        let isOnline = true; // Trạng thái sẵn sàng nhận cuốc
-
-        // 1. Vừa mở App là tự động báo danh
-        socket.emit('register_driver', DRIVER_ID);
-
-        // 2. Hàm xử lý khi gạt nút Online/Offline
-        function toggleStatus() {
-            const toggle = document.getElementById('statusToggle');
-            const text = document.getElementById('statusText');
-            isOnline = toggle.checked;
-
-            if (isOnline) {
-                text.innerText = '🟢 Đang trực tuyến';
-                text.classList.remove('offline');
-                socket.emit('register_driver', DRIVER_ID); // Báo server đang rảnh
-            } else {
-                text.innerText = '⚫ Đang ngoại tuyến';
-                text.classList.add('offline');
-                document.getElementById('incomingTrip').style.display = 'none'; // Giấu cuốc đi nếu đang hiện
-            }
-        }
-
-        // 3. Lắng nghe tín hiệu nổ cuốc
-        socket.on('new_bidding_trip', (tripData) => {
-            if (!isOnline) return; // Nếu tài xế tắt app đi nghỉ, chặn không cho hiện thông báo
-
-            currentTrip = tripData;
-            
-            document.getElementById('tripIdDisplay').innerText = tripData.tripId;
-            // Format số tiền có dấu phẩy cho đẹp (VD: 40,000 đ)
-            document.getElementById('priceDisplay').innerText = tripData.suggestedPrice.toLocaleString('vi-VN') + ' đ';
-            
-            const tripCard = document.getElementById('incomingTrip');
-            tripCard.style.display = 'block';
-            tripCard.style.borderLeftColor = '#f39c12';
-            
-            const statusText = document.getElementById('tripStatusText');
-            statusText.innerText = '🚨 CÓ CUỐC XE MỚI!';
-            statusText.style.color = '#f39c12';
-            
-            document.getElementById('btnAccept').style.display = 'block';
-            document.getElementById('btnComplete').style.display = 'none';
-        });
-
-        // 4. Hàm Chốt Cuốc
-        function acceptTrip() {
-            socket.emit('accept_trip', {
-                tripId: currentTrip.tripId,
-                driverId: DRIVER_ID,
-                customerId: currentTrip.customerId
-            });
-            
-            document.getElementById('btnAccept').style.display = 'none';
-            document.getElementById('btnComplete').style.display = 'block';
-            
-            const tripCard = document.getElementById('incomingTrip');
-            tripCard.style.borderLeftColor = '#2980b9';
-            
-            const statusText = document.getElementById('tripStatusText');
-            statusText.innerText = '🚙 ĐANG CHỞ KHÁCH';
-            statusText.style.color = '#2980b9';
-        }
-
-        // 5. Hàm Trả Khách
-        function completeTrip() {
-            socket.emit('complete_trip', {
-                tripId: currentTrip.tripId,
-                customerId: currentTrip.customerId
-            });
-            
-            document.getElementById('incomingTrip').style.display = 'none';
-            alert('🎉 Chuyến đi hoàn thành! Tiền đã được cộng vào hệ thống.');
-        }
-    </script>
+    <!-- Nhúng file script  -->
+    <script src="script_driver.js"></script>
 </body>
 </html>

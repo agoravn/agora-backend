@@ -127,23 +127,29 @@
         //----------------------------------------------
 
         // 3. Hàm Đặt xe (Gắn tọa độ thực tế để gửi xuống Backend)
+       // Hàm kích hoạt khi khách bấm nút "TÌM TÀI XẾ"
         function bookRide() {
-            if (!pickupCoords || !dropoffCoords) {
-                alert('⚠️ Vui lòng nhập đầy đủ cả điểm đón và điểm đến!');
+            const pickupText = document.getElementById('pickupInput').value;
+            const dropoffText = document.getElementById('dropoffInput').value;
+            
+            if (!pickupText || !dropoffText) {
+                alert("Vui lòng chọn đầy đủ Điểm đón và Điểm đến!");
                 return;
             }
 
-            document.getElementById('resultBox').innerHTML = `<b>Đang tìm tài xế gần bạn... ⏳</b>`;
+            const mainBtn = document.getElementById('mainActionBtn');
+            mainBtn.innerText = "ĐANG TÌM TÀI XẾ GẦN BẠN... ⏳";
+            mainBtn.style.background = "#34495e";
 
-            const rideRequest = {
-                customerId: 'CUST_WEB_001',
-                pickup: pickupCoords,
-                dropoff: dropoffCoords,
-                serviceType: 'MOTORBIKE',
-                price: currentPrice // Bắn giá tiền thật vừa tính được đi
-            };
+            // Đảm bảo customPrice là một con số, nếu lỗi thì lấy mặc định 35000
+            const finalPrice = typeof customPrice !== 'undefined' ? customPrice : 35000;
 
-            socket.emit('request_ride', rideRequest);
+            // Bắn dữ liệu lên Server
+            socket.emit('book_ride', {
+                price: finalPrice, 
+                pickup: pickupText, 
+                dropoff: dropoffText
+            });
         }
 
         // Lắng nghe Tài xế nhận cuốc
@@ -267,4 +273,176 @@
                 currentPrice = customPrice; 
             }
         }
-    
+        
+        
+        let suggestTimeout;
+
+        function suggestAddress(query, type) {
+            const suggestionBox = document.getElementById(type + 'Suggestions');
+            
+            if (!suggestionBox) return;
+
+            // Chờ khách gõ ít nhất 2 ký tự mới bắt đầu tìm
+            if (query.trim().length < 2) {
+                suggestionBox.style.display = 'none';
+                return;
+            }
+
+            clearTimeout(suggestTimeout);
+            
+            // Đợi 400ms sau khi ngừng gõ mới gọi API để chống spam
+            suggestTimeout = setTimeout(() => {
+                // Dùng Photon API. Đã tích hợp tọa độ (lat, lon) của Đà Nẵng để ưu tiên gợi ý cục bộ!
+                const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=16.0544&lon=108.2022&limit=5`;
+                
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionBox.innerHTML = ''; 
+                        
+                        if (data.features && data.features.length > 0) {
+                            data.features.forEach(feature => {
+                                const place = feature.properties;
+                                const div = document.createElement('div');
+                                div.className = 'suggestion-item';
+                                
+                                // Lọc và nối các thông tin: Tên đường, Quận/Huyện, Thành phố
+                                const name = place.name || place.street || query;
+                                const district = place.district ? ', ' + place.district : '';
+                                const city = place.city ? ', ' + place.city : '';
+                                const shortName = name + district + city;
+
+                                div.innerHTML = `<span style="margin-right: 10px; color: #bdc3c7;">📍</span> ${shortName}`;
+                                
+                                // Xử lý khi khách bấm chọn 1 dòng
+                                div.onclick = () => {
+                                    document.getElementById(type + 'Input').value = shortName;
+                                    suggestionBox.style.display = 'none';
+                                    searchAddress(shortName, type); // Tự động cắm ghim
+                                };
+                                suggestionBox.appendChild(div);
+                            });
+                            suggestionBox.style.display = 'block';
+                        } else {
+                            suggestionBox.style.display = 'none';
+                        }
+                    })
+                    .catch(err => console.error("Lỗi tìm kiếm gợi ý:", err));
+            }, 400);
+        }
+
+        // Tắt hộp gợi ý khi click ra vùng trắng
+        document.addEventListener('click', function(e) {
+            if (e.target.className !== 'addr-input') {
+                const pSugg = document.getElementById('pickupSuggestions');
+                const dSugg = document.getElementById('dropoffSuggestions');
+                if(pSugg) pSugg.style.display = 'none';
+                if(dSugg) dSugg.style.display = 'none';
+            }
+        });
+
+        // Hàm lấy vị trí GPS hiện tại của thiết bị
+        function getCurrentLocation(type) {
+            if (navigator.geolocation) {
+                const inputField = document.getElementById(type + 'Input');
+                inputField.value = "Đang lấy vị trí..."; // Hiển thị trạng thái chờ
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        // Gọi API Photon để dịch tọa độ GPS ngược lại thành tên đường
+                        const url = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
+                        
+                        fetch(url)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.features && data.features.length > 0) {
+                                    const place = data.features[0].properties;
+                                    
+                                    // Lắp ráp tên đường, quận, thành phố
+                                    const name = place.name || place.street || "";
+                                    const district = place.district ? ', ' + place.district : '';
+                                    const city = place.city ? ', ' + place.city : '';
+                                    
+                                    // Xóa dấu phẩy thừa ở đầu nếu không có tên đường
+                                    let fullAddress = (name + district + city).replace(/^,\s*/, ''); 
+                                    
+                                    if(!fullAddress) fullAddress = `Tọa độ: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+                                    // Điền tên đường vào ô input
+                                    inputField.value = fullAddress;
+                                    
+                                    // Gọi hàm cắm ghim trên bản đồ
+                                    searchAddress(fullAddress, type);
+                                } else {
+                                    inputField.value = `${lat}, ${lon}`;
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Lỗi dịch tọa độ:", err);
+                                inputField.value = `${lat}, ${lon}`;
+                            });
+                    },
+                    (error) => {
+                        console.warn("Không lấy được GPS thật, tự động dùng tọa độ giả (Đà Nẵng) để test:", error.message);
+                        
+                        // Tọa độ giả: Cầu Rồng, Đà Nẵng
+                        const lat = 16.0614;
+                        const lon = 108.2238;
+
+                        const url = `https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`;
+                        fetch(url)
+                            .then(res => res.json())
+                            .then(data => {
+                                let fullAddress = "Cầu Rồng, Nguyễn Văn Linh, Đà Nẵng (Tọa độ giả)";
+                                if (data.features && data.features.length > 0) {
+                                    const place = data.features[0].properties;
+                                    const name = place.name || place.street || "";
+                                    const district = place.district ? ', ' + place.district : '';
+                                    const city = place.city ? ', ' + place.city : '';
+                                    fullAddress = (name + district + city).replace(/^,\s*/, ''); 
+                                }
+                                inputField.value = fullAddress;
+                                searchAddress(fullAddress, type);
+                            });
+                    },
+                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                alert("Trình duyệt hoặc thiết bị của bạn không hỗ trợ định vị GPS.");
+            }
+        }
+
+        // Lắng nghe tín hiệu khi Tài xế chốt cuốc
+        socket.on('driver_accepted', (data) => {
+            const mainBtn = document.getElementById('mainActionBtn');
+            if(mainBtn) {
+                // Đổi nút Tìm Tài Xế thành thông báo thành công
+                mainBtn.innerText = "🎉 TÀI XẾ ĐANG TỚI!";
+                mainBtn.style.background = "#27ae60"; // Chuyển xanh lá
+                mainBtn.disabled = true; // Khóa nút không cho bấm nữa
+            }
+            
+            // Có thể thêm một popup thông báo nhỏ
+            alert(`Tài xế đã nhận cuốc!\nMã chuyến: ${data.tripId}\nTài xế đang di chuyển đến điểm đón.`);
+        });
+        // LẮNG NGHE TÍN HIỆU HOÀN THÀNH CHUYẾN ĐI
+        socket.on('trip_completed', (data) => {
+            const mainBtn = document.getElementById('mainActionBtn');
+            if(mainBtn) {
+                // Đổi nút thành Đã hoàn thành
+                mainBtn.innerText = "✅ CHUYẾN ĐI HOÀN TẤT";
+                mainBtn.style.background = "#2980b9"; // Đổi sang màu xanh dương
+                
+                // Chờ 3 giây rồi reset lại nút thành màu đen gốc để khách đặt chuyến mới
+                setTimeout(() => {
+                    mainBtn.innerText = "TÌM TÀI XẾ";
+                    mainBtn.style.background = "#2d3436";
+                    mainBtn.disabled = false; // Mở khóa lại nút
+                }, 3000);
+            }
+            
+            alert(`🎉 Hoàn thành chuyến đi!\nMã chuyến: ${data.tripId}\nCảm ơn bạn đã tin dùng Agora!`);
+        });

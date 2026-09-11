@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style_client.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Agora - Đặt xe</title>
-    
+    <title>Agora - Đặt xe</title> 
     <!-- Nhúng thư viện Bản đồ Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
        
@@ -32,18 +31,33 @@
                 <div class="service-tab" id="tab-delivery" onclick="selectService('DELIVERY')">📦 Gửi Hàng</div>
             </div>
 
-            <!-- 2. Địa chỉ -->
+            <!-- 2. Gán Địa chỉ -->
             <div class="address-box">
                 <div class="dotted-line"></div>
-                <div class="addr-row">
+                
+                <!-- ĐIỂM ĐÓN -->
+                <div class="addr-row" style="position: relative;">
                     <div class="dot dot-blue"></div>
-                    <input type="text" id="pickupInput" class="addr-input" placeholder="Nhập điểm đón..." onkeypress="if(event.key === 'Enter') searchAddress(this.value, 'pickup')">
+                    <input type="text" id="pickupInput" class="addr-input" placeholder="Nhập điểm đón..." oninput="suggestAddress(this.value, 'pickup')"
+                    onkeydown="if(event.key === 'Enter') { searchAddress(this.value, 'pickup'); document.getElementById('pickupSuggestions').style.display = 'none'; }">
+                    
+                    <!-- THÊM NÚT ĐỊNH VỊ VỊ TRÍ HIỆN TẠI -->
+                    <button onclick="getCurrentLocation('pickup')" style="background:none; border:none; font-size:18px; cursor:pointer; padding:5px; margin-right:2px;" title="Lấy vị trí hiện tại">🎯</button>
+                    
                     <button class="btn-search blue" onclick="searchAddress(document.getElementById('pickupInput').value, 'pickup')">🔍</button>
+                    <div id="pickupSuggestions" class="suggestions-list"></div>
                 </div>
-                <div class="addr-row">
+                
+                <!-- Điểm Đến -->
+                <div class="addr-row" style="position: relative;">
                     <div class="dot dot-red"></div>
-                    <input type="text" id="dropoffInput" class="addr-input" placeholder="Nhập điểm đến..." onkeypress="if(event.key === 'Enter') searchAddress(this.value, 'dropoff')">
+                    <!-- Đổi onkeypress thành oninput -->
+                    <input type="text" id="dropoffInput" class="addr-input" placeholder="Nhập điểm đến..." oninput="suggestAddress(this.value, 'dropoff')"
+                    onkeydown="if(event.key === 'Enter') { searchAddress(this.value, 'dropoff'); document.getElementById('dropoffSuggestions').style.display = 'none'; }">
+                    
                     <button class="btn-search red" onclick="searchAddress(document.getElementById('dropoffInput').value, 'dropoff')">🔍</button>
+                    <!-- Hộp xổ xuống kết quả Điểm Đến -->
+                    <div id="dropoffSuggestions" class="suggestions-list"></div>
                 </div>
             </div>
 
@@ -78,11 +92,11 @@
 
     </div>
     
-
     <!-- Script Bản đồ & Socket -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    
     <!-- Nhúng file script  -->
-    <script src="script.js"></script>
+    <script src="script_client.js"></script>
 </body>
 </html>
